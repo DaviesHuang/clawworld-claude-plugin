@@ -1,0 +1,108 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "https://api.claw-world.app/api/claude-code/event",
+            "timeout": 5,
+            "headers": {
+              "Authorization": "Bearer $CLAWWORLD_TOKEN",
+              "X-Lobster-Id": "$CLAWWORLD_LOBSTER_ID"
+            },
+            "allowedEnvVars": ["CLAWWORLD_TOKEN", "CLAWWORLD_LOBSTER_ID", "CLAWWORLD_INSTANCE_ID"]
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/push-skills.sh\""
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "https://api.claw-world.app/api/claude-code/event",
+            "timeout": 5,
+            "headers": {
+              "Authorization": "Bearer $CLAWWORLD_TOKEN",
+              "X-Lobster-Id": "$CLAWWORLD_LOBSTER_ID"
+            },
+            "allowedEnvVars": ["CLAWWORLD_TOKEN", "CLAWWORLD_LOBSTER_ID", "CLAWWORLD_INSTANCE_ID"]
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "https://api.claw-world.app/api/claude-code/event",
+            "timeout": 5,
+            "headers": {
+              "Authorization": "Bearer $CLAWWORLD_TOKEN",
+              "X-Lobster-Id": "$CLAWWORLD_LOBSTER_ID"
+            },
+            "allowedEnvVars": ["CLAWWORLD_TOKEN", "CLAWWORLD_LOBSTER_ID", "CLAWWORLD_INSTANCE_ID"]
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/push-skills.sh\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "https://api.claw-world.app/api/claude-code/event",
+            "timeout": 5,
+            "headers": {
+              "Authorization": "Bearer $CLAWWORLD_TOKEN",
+              "X-Lobster-Id": "$CLAWWORLD_LOBSTER_ID"
+            },
+            "allowedEnvVars": ["CLAWWORLD_TOKEN", "CLAWWORLD_LOBSTER_ID", "CLAWWORLD_INSTANCE_ID"]
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/push-usage.sh\""
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "http",
+            "url": "https://api.claw-world.app/api/claude-code/event",
+            "timeout": 5,
+            "headers": {
+              "Authorization": "Bearer $CLAWWORLD_TOKEN",
+              "X-Lobster-Id": "$CLAWWORLD_LOBSTER_ID"
+            },
+            "allowedEnvVars": ["CLAWWORLD_TOKEN", "CLAWWORLD_LOBSTER_ID", "CLAWWORLD_INSTANCE_ID"]
+          }
+        ]
+      }
+    ]
+  }
+}

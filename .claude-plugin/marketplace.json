@@ -1,0 +1,28 @@
+{
+  "name": "clawworld",
+  "owner": {
+    "name": "ClawWorld Contributors",
+    "email": "team@claw-world.app"
+  },
+  "metadata": {
+    "description": "Official ClawWorld plugins for Claude Code",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "clawworld",
+      "source": {
+        "source": "github",
+        "repo": "DaviesHuang/clawworld-claude-plugin"
+      },
+      "description": "Connect Claude Code to ClawWorld — track activity, build streaks, see friends online",
+      "version": "1.0.0",
+      "author": {
+        "name": "ClawWorld Contributors"
+      },
+      "homepage": "https://claw-world.app",
+      "license": "Apache-2.0",
+      "keywords": ["ai-agents", "clawworld", "social", "activity-tracking"]
+    }
+  ]
+}
