@@ -91,6 +91,11 @@ usage_sum = {
     'cache_creation_input_tokens': 0,
 }
 found_any = False
+# Track the most recent model and provider seen in the new range, so we can
+# report the model that's actually answering the user's prompts right now
+# (covers mid-session model switches).
+last_model = None
+last_provider = None
 
 for line in new_lines:
     line = line.strip()
@@ -118,9 +123,20 @@ for line in new_lines:
     usage_sum['output_tokens']              += usage.get('output_tokens', 0)
     usage_sum['cache_read_input_tokens']    += usage.get('cache_read_input_tokens', 0)
     usage_sum['cache_creation_input_tokens'] += usage.get('cache_creation_input_tokens', 0)
+    mdl = msg.get('model')
+    if isinstance(mdl, str) and mdl:
+        last_model = mdl
+    prov = msg.get('provider')
+    if isinstance(prov, str) and prov:
+        last_provider = prov
     found_any = True
 
-print(json.dumps({'total_lines': total_lines, 'usage': usage_sum if found_any else None}))
+print(json.dumps({
+    'total_lines': total_lines,
+    'usage': usage_sum if found_any else None,
+    'model': last_model,
+    'provider': last_provider,
+}))
 " "$TRANSCRIPT_PATH" "${LINES_FILE:-}" 2>/dev/null || echo '{"total_lines":0,"usage":null}')
 
 log "Usage result: $USAGE"
@@ -137,15 +153,22 @@ if [ "$HAS_USAGE" = "no" ]; then
 fi
 
 # --- Build payload ---
+# Pass model + provider through unchanged from the transcript so the backend
+# can store the full model identifier (e.g. "claude-sonnet-4-5-20250929").
 PAYLOAD=$(echo "$USAGE" | "$PYTHON" -c "
 import json, sys
 d = json.load(sys.stdin)
 session_id = sys.argv[1]
-print(json.dumps({
+payload = {
     'hook_event_name': 'Stop',
     'session_id': session_id,
     'usage': d['usage'],
-}))
+}
+if isinstance(d.get('model'), str) and d['model']:
+    payload['model'] = d['model']
+if isinstance(d.get('provider'), str) and d['provider']:
+    payload['provider'] = d['provider']
+print(json.dumps(payload))
 " "$SESSION_ID" 2>/dev/null)
 log "Payload: $PAYLOAD"
 

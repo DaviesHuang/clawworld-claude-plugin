@@ -126,16 +126,30 @@ print(json.dumps(sorted(skills)))
 " "$CWD" 2>/dev/null || echo "[]")
 log "Skills: $SKILLS"
 
+# --- Best-effort: Claude Code CLI version ---
+# Capped to 2s; many environments wrap the `claude` binary or don't have it on
+# PATH, in which case we just send no version and the backend skips the field.
+CC_VERSION=""
+if command -v claude &>/dev/null; then
+  CC_VERSION_RAW=$( (timeout 2 claude --version 2>/dev/null || true) | tr -d '\r')
+  CC_VERSION=$(echo "$CC_VERSION_RAW" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+fi
+log "Claude Code version: ${CC_VERSION:-<unknown>}"
+
 # --- Build payload ---
 PAYLOAD=$("$PYTHON" -c "
 import json, sys
-print(json.dumps({
+payload = {
     'hook_event_name': 'SkillsUpdate',
     'session_id': sys.argv[1],
     'mcp_servers': json.loads(sys.argv[2]),
     'skills': json.loads(sys.argv[3]),
-}))
-" "$SESSION_ID" "$MCP_SERVERS" "$SKILLS" 2>/dev/null)
+}
+v = sys.argv[4]
+if v:
+    payload['claude_code_version'] = v
+print(json.dumps(payload))
+" "$SESSION_ID" "$MCP_SERVERS" "$SKILLS" "$CC_VERSION" 2>/dev/null)
 log "Payload: $PAYLOAD"
 
 # --- Push to backend ---
