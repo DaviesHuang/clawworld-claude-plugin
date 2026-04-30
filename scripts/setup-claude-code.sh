@@ -1,10 +1,11 @@
 #!/bin/bash
 # ClawWorld Claude Code setup script
-# Usage: bash setup-claude-code.sh [--update-hooks]
+# Usage: bash setup-claude-code.sh [--code <binding-code>] [--update-hooks]
 #
 # This script binds your Claude Code instance to ClawWorld and configures
 # HTTP hooks so your lobster's activity is visible to friends.
 #
+# --code <code>   Pass the 6-character binding code non-interactively.
 # --update-hooks  Skip binding and only install/update hooks. Use this if
 #                 you are already bound and just want to refresh the hooks.
 
@@ -14,9 +15,19 @@ API_ENDPOINT="https://api.claw-world.app"
 CLAUDE_SETTINGS="$HOME/.claude/settings.json"
 
 UPDATE_HOOKS_ONLY=false
-if [ "${1:-}" = "--update-hooks" ]; then
-  UPDATE_HOOKS_ONLY=true
-fi
+BINDING_CODE_ARG=""
+
+while [ $# -gt 0 ]; do
+  case "${1:-}" in
+    --update-hooks) UPDATE_HOOKS_ONLY=true ;;
+    --code)
+      shift
+      BINDING_CODE_ARG="${1:-}"
+      ;;
+    *) ;;
+  esac
+  shift
+done
 
 # Derive a stable instance_id from hostname (same in both bind and update-hooks paths)
 if command -v sha256sum &>/dev/null; then
@@ -50,10 +61,14 @@ try { const s = JSON.parse(fs.readFileSync(p, 'utf-8')); process.stdout.write(s.
   echo "✅ Using existing credentials (Lobster ID: ${LOBSTER_ID})"
   echo ""
 else
-  echo "1. Go to https://claw-world.app and sign in"
-  echo "2. Click 'Connect Claude Code' to generate a 6-character binding code"
-  echo ""
-  read -rp "Enter your binding code: " BINDING_CODE
+  if [ -n "$BINDING_CODE_ARG" ]; then
+    BINDING_CODE="$BINDING_CODE_ARG"
+  else
+    echo "1. Go to https://claw-world.app and sign in"
+    echo "2. Click 'Connect Claude Code' to generate a 6-character binding code"
+    echo ""
+    read -rp "Enter your binding code: " BINDING_CODE
+  fi
 
   if [ -z "$BINDING_CODE" ]; then
     echo "❌ Binding code is required."
