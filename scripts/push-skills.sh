@@ -49,15 +49,29 @@ else
 fi
 log "Sentinel file: ${SENTINEL_FILE:-none}"
 
-# Auth credentials from env (injected by Claude Code via allowedEnvVars)
-TOKEN="${CLAWWORLD_TOKEN:-}"
-LOBSTER_ID="${CLAWWORLD_LOBSTER_ID:-}"
+# Auth credentials: prefer v2 ~/.clawworld/config.json, fallback to legacy env
+CONFIG_VALUES=$($PYTHON -c "
+import json, os
+p = os.path.expanduser('~/.clawworld/config.json')
+try:
+    c = json.load(open(p))
+except Exception:
+    c = {}
+print(c.get('endpoint') or os.environ.get('CLAWWORLD_ENDPOINT') or 'https://api.claw-world.app')
+print(c.get('deviceToken') or os.environ.get('CLAWWORLD_TOKEN') or '')
+print(c.get('lobsterId') or os.environ.get('CLAWWORLD_LOBSTER_ID') or '')
+print(c.get('instanceId') or os.environ.get('CLAWWORLD_INSTANCE_ID') or '')
+" 2>/dev/null || true)
+ENDPOINT=$(echo "$CONFIG_VALUES" | sed -n '1p')
+TOKEN=$(echo "$CONFIG_VALUES" | sed -n '2p')
+LOBSTER_ID=$(echo "$CONFIG_VALUES" | sed -n '3p')
+INSTANCE_ID=$(echo "$CONFIG_VALUES" | sed -n '4p')
 
 if [ -z "$TOKEN" ] || [ -z "$LOBSTER_ID" ]; then
   log "Missing credentials (TOKEN=${TOKEN:+set}, LOBSTER_ID=${LOBSTER_ID:+set}) — exiting"
   exit 0
 fi
-log "Credentials present"
+log "Credentials present (config/env source, instance_id=${INSTANCE_ID:-unset})"
 
 # --- Extract MCP servers ---
 MCP_SERVERS=$("$PYTHON" -c "
@@ -154,7 +168,7 @@ log "Payload: $PAYLOAD"
 
 # --- Push to backend ---
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-  -X POST "${CLAWWORLD_ENDPOINT:-https://api.claw-world.app}/api/claude-code/event" \
+  -X POST "${ENDPOINT:-https://api.claw-world.app}/api/claude-code/event" \
   -H "Authorization: Bearer $TOKEN" \
   -H "X-Lobster-Id: $LOBSTER_ID" \
   -H "Content-Type: application/json" \

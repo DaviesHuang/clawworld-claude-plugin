@@ -24,13 +24,26 @@ if [ -z "$PYTHON" ]; then
 fi
 log "Python: $PYTHON"
 
-# Auth credentials from env (injected by Claude Code via settings.json env)
-TOKEN="${CLAWWORLD_TOKEN:-}"
-LOBSTER_ID="${CLAWWORLD_LOBSTER_ID:-}"
-INSTANCE_ID="${CLAWWORLD_INSTANCE_ID:-}"
+# Auth credentials: prefer v2 ~/.clawworld/config.json, fallback to legacy env
+CONFIG_VALUES=$($PYTHON -c "
+import json, os
+p = os.path.expanduser('~/.clawworld/config.json')
+try:
+    c = json.load(open(p))
+except Exception:
+    c = {}
+print(c.get('endpoint') or os.environ.get('CLAWWORLD_ENDPOINT') or 'https://api.claw-world.app')
+print(c.get('deviceToken') or os.environ.get('CLAWWORLD_TOKEN') or '')
+print(c.get('lobsterId') or os.environ.get('CLAWWORLD_LOBSTER_ID') or '')
+print(c.get('instanceId') or os.environ.get('CLAWWORLD_INSTANCE_ID') or '')
+" 2>/dev/null || true)
+ENDPOINT=$(echo "$CONFIG_VALUES" | sed -n '1p')
+TOKEN=$(echo "$CONFIG_VALUES" | sed -n '2p')
+LOBSTER_ID=$(echo "$CONFIG_VALUES" | sed -n '3p')
+INSTANCE_ID=$(echo "$CONFIG_VALUES" | sed -n '4p')
 
-if [ -z "$TOKEN" ] || [ -z "$LOBSTER_ID" ]; then
-  log "Missing credentials (TOKEN=${TOKEN:+set}, LOBSTER_ID=${LOBSTER_ID:+set}) — exiting"
+if [ -z "$TOKEN" ] || [ -z "$LOBSTER_ID" ] || [ -z "$INSTANCE_ID" ]; then
+  log "Missing credentials (TOKEN=${TOKEN:+set}, LOBSTER_ID=${LOBSTER_ID:+set}, INSTANCE_ID=${INSTANCE_ID:+set}) — exiting"
   exit 0
 fi
 log "Credentials present"
@@ -42,15 +55,15 @@ if [ -f "$SESSION_HASH_FILE" ]; then
   SESSION_KEY_HASH=$(cat "$SESSION_HASH_FILE" 2>/dev/null || echo "")
 fi
 
-# Fallback: derive from lobster_id + today's date
+# Fallback follows v2: sha256(instanceId + UTC YYYY-MM-DD).slice(0, 16)
 if [ -z "$SESSION_KEY_HASH" ]; then
-  DATE=$(date '+%Y%m%d')
+  DATE=$(date -u '+%Y-%m-%d')
   if command -v sha256sum &>/dev/null; then
-    SESSION_KEY_HASH=$(echo -n "${LOBSTER_ID}${DATE}" | sha256sum | cut -c1-16)
+    SESSION_KEY_HASH=$(echo -n "${INSTANCE_ID}${DATE}" | sha256sum | cut -c1-16)
   else
-    SESSION_KEY_HASH=$(echo -n "${LOBSTER_ID}${DATE}" | shasum -a 256 | cut -c1-16)
+    SESSION_KEY_HASH=$(echo -n "${INSTANCE_ID}${DATE}" | shasum -a 256 | cut -c1-16)
   fi
-  log "Using fallback session_key_hash (date-based): $SESSION_KEY_HASH"
+  log "Using fallback session_key_hash (v2 date-based): $SESSION_KEY_HASH"
 else
   log "session_key_hash: $SESSION_KEY_HASH"
 fi
@@ -92,7 +105,7 @@ log "Payload: $PAYLOAD"
 
 # Push to backend
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-  -X POST "${CLAWWORLD_ENDPOINT:-https://api.claw-world.app}/api/claw/activity" \
+  -X POST "${ENDPOINT:-https://api.claw-world.app}/api/claw/activity" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   --max-time 5 \
